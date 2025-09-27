@@ -1,0 +1,77 @@
+-- DROP AND CREATE TABLE
+DROP TABLE IF EXISTS StudentEnrollments;
+CREATE TABLE StudentEnrollments (
+    student_id INT PRIMARY KEY,
+    student_name VARCHAR(100),
+    course_id VARCHAR(10),
+    enrollment_date DATE
+);
+
+-- INSERT SAMPLE DATA
+INSERT INTO StudentEnrollments (student_id, student_name, course_id, enrollment_date)
+VALUES
+(1, 'Ashish', 'CSE101', '2024-06-01'),
+(2, 'Smaran', 'CSE102', '2024-06-01'),
+(3, 'Vaibhav', 'CSE103', '2024-06-01');
+
+-- PART A DEADLOCK SIMULATION
+-- SESSION 1
+START TRANSACTION;
+UPDATE StudentEnrollments SET course_id='CSE201' WHERE student_id=1;
+SELECT SLEEP(2);
+UPDATE StudentEnrollments SET course_id='CSE202' WHERE student_id=2;
+COMMIT;
+
+-- SESSION 2
+START TRANSACTION;
+UPDATE StudentEnrollments SET course_id='CSE301' WHERE student_id=2;
+SELECT SLEEP(2);
+UPDATE StudentEnrollments SET course_id='CSE302' WHERE student_id=1;
+COMMIT;
+
+-- PART B MVCC DEMONSTRATION
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- SESSION A READ
+START TRANSACTION;
+SELECT enrollment_date FROM StudentEnrollments WHERE student_id=1;
+SELECT SLEEP(2);
+
+-- SESSION B WRITE
+START TRANSACTION;
+UPDATE StudentEnrollments SET enrollment_date='2024-07-10' WHERE student_id=1;
+COMMIT;
+
+-- SESSION A READ OLD VALUE
+SELECT enrollment_date FROM StudentEnrollments WHERE student_id=1;
+COMMIT;
+
+-- PART C LOCKING VS MVCC
+-- WITHOUT MVCC SESSION 1 WRITE
+START TRANSACTION;
+SELECT * FROM StudentEnrollments WHERE student_id=1 FOR UPDATE;
+SELECT SLEEP(5);
+UPDATE StudentEnrollments SET enrollment_date='2024-08-01' WHERE student_id=1;
+COMMIT;
+
+-- SESSION 2 READ BLOCKED
+START TRANSACTION;
+SELECT * FROM StudentEnrollments WHERE student_id=1 FOR UPDATE;
+COMMIT;
+
+-- WITH MVCC SESSION A READ
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+START TRANSACTION;
+SELECT enrollment_date FROM StudentEnrollments WHERE student_id=1;
+
+-- SESSION B WRITE
+START TRANSACTION;
+UPDATE StudentEnrollments SET enrollment_date='2024-09-01' WHERE student_id=1;
+COMMIT;
+
+-- SESSION A READ OLD VALUE
+SELECT enrollment_date FROM StudentEnrollments WHERE student_id=1;
+COMMIT;
+
+-- FINAL TABLE STATE
+SELECT * FROM StudentEnrollments;
