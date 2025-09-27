@@ -1,0 +1,62 @@
+-- Create table
+DROP TABLE IF EXISTS StudentEnrollments;
+CREATE TABLE StudentEnrollments (
+    enrollment_id INT PRIMARY KEY,
+    student_name VARCHAR(100),
+    course_id VARCHAR(10),
+    enrollment_date DATE,
+    CONSTRAINT unique_student_course UNIQUE(student_name, course_id)
+);
+
+-- Sample data
+INSERT INTO StudentEnrollments VALUES
+(1, 'Ashish', 'CSE101', '2024-07-01'),
+(2, 'Smaran', 'CSE102', '2024-07-01'),
+(3, 'Vaibhav', 'CSE101', '2024-07-01');
+
+-- Part A: Prevent duplicate enrollment
+-- START TRANSACTION;
+-- INSERT INTO StudentEnrollments VALUES (4, 'Ashish', 'CSE101', '2024-07-02');
+-- COMMIT;
+
+-- START TRANSACTION;
+-- INSERT INTO StudentEnrollments VALUES (5, 'Ashish', 'CSE101', '2024-07-03'); -- should fail
+-- ROLLBACK;
+
+-- Part B: Lock row with SELECT FOR UPDATE
+-- Session 1
+START TRANSACTION;
+SELECT * FROM StudentEnrollments
+WHERE student_name = 'Ashish' AND course_id = 'CSE101'
+FOR UPDATE;
+
+-- Session 2 (will wait until Session 1 commits)
+START TRANSACTION;
+UPDATE StudentEnrollments
+SET enrollment_date = '2024-08-01'
+WHERE student_name = 'Ashish' AND course_id = 'CSE101';
+COMMIT;
+
+COMMIT; -- Session 1 commit
+
+-- Part C: Show consistency with locking
+-- Session 1
+START TRANSACTION;
+SELECT * FROM StudentEnrollments
+WHERE student_name = 'Ashish' AND course_id = 'CSE101'
+FOR UPDATE;
+UPDATE StudentEnrollments
+SET enrollment_date = '2024-09-01'
+WHERE student_name = 'Ashish' AND course_id = 'CSE101';
+
+-- Session 2 (waits)
+START TRANSACTION;
+UPDATE StudentEnrollments
+SET enrollment_date = '2024-10-01'
+WHERE student_name = 'Ashish' AND course_id = 'CSE101';
+COMMIT;
+
+COMMIT; -- Session 1 commit
+
+-- Final check
+SELECT * FROM StudentEnrollments;
